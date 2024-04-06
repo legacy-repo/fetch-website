@@ -1,4 +1,5 @@
 import os
+import json
 import time
 import requests
 from bs4 import BeautifulSoup
@@ -34,8 +35,25 @@ def transfer_request(path):
     )
 
     # Create a Flask response object with the response from the other server
-    headers = [(key, value) for (key, value)
-               in response.headers.items() if key != 'Transfer-Encoding']
+    headers = [
+        (key, value)
+        for (key, value) in response.headers.items()
+        if key != "Transfer-Encoding"
+    ]
+
+    if "json/baseline_experiments" in path and response.headers.get(
+        "Content-Type", ""
+    ).lower().startswith("application/json"):
+        response_json = response.json()
+        if "profiles" in response_json:
+            rows = response_json.get("profiles", {}).get("rows", [])
+            for row in rows:
+                row["uri"] = None
+            modified_json = json.dumps(response_json)  # 将修改后的JSON转换为字符串
+            return Response(
+                response=modified_json, status=response.status_code, headers=headers
+            )
+
     return Response(response.content, response.status_code, headers)
 
 
@@ -51,6 +69,43 @@ headers = {
 }
 
 
+def format_text(text):
+    soup = BeautifulSoup(text, "html.parser")
+
+    css_contents = read_css_file()
+    # Create a new `style` element and insert the CSS contents
+    style_tag = soup.new_tag("style")
+    style_tag.string = css_contents
+    soup.head.append(style_tag)
+
+    # Find all <a> tags and add the `target` attribute
+    for a in soup.find_all("a"):
+        a.attrs["target"] = "_blank"
+        if "href" in a.attrs:
+            if a.attrs["href"].startswith("/gxa/experiments"):
+                a.attrs["href"] = "javascript:void(0);"
+            else:
+                # Resolve relative links
+                a.attrs["href"] = urljoin(website_baseurl, a["href"])
+
+    for link in soup.find_all("link"):
+        if "href" in link.attrs:
+            # Resolve relative links
+            link.attrs["href"] = urljoin(website_baseurl, link["href"])
+
+    for script in soup.find_all("script"):
+        if "src" in script.attrs:
+            # Resolve relative links
+            script.attrs["src"] = urljoin(website_baseurl, script["src"])
+
+    for img in soup.find_all("img"):
+        if "src" in img.attrs:
+            # Resolve relative links
+            img.attrs["src"] = urljoin(website_baseurl, img["src"])
+
+    return soup
+
+
 # geneSymbol: must be a valid gene symbol
 def fetch(req_args={}, cache_dir="cache"):
     """Fetch and convert html page."""
@@ -59,36 +114,7 @@ def fetch(req_args={}, cache_dir="cache"):
         headers=headers
     )
     text = response.text
-
-    soup = BeautifulSoup(text, 'html.parser')
-
-    css_contents = read_css_file()
-    # Create a new `style` element and insert the CSS contents
-    style_tag = soup.new_tag('style')
-    style_tag.string = css_contents
-    soup.head.append(style_tag)
-
-    # Find all <a> tags and add the `target` attribute
-    for a in soup.find_all('a'):
-        a.attrs['target'] = '_blank'
-        if 'href' in a.attrs:
-            # Resolve relative links
-            a.attrs['href'] = urljoin(website_baseurl, a['href'])
-
-    for link in soup.find_all('link'):
-        if 'href' in link.attrs:
-            # Resolve relative links
-            link.attrs['href'] = urljoin(website_baseurl, link['href'])
-
-    for script in soup.find_all('script'):
-        if 'src' in script.attrs:
-            # Resolve relative links
-            script.attrs['src'] = urljoin(website_baseurl, script['src'])
-
-    for img in soup.find_all('img'):
-        if 'src' in img.attrs:
-            # Resolve relative links
-            img.attrs['src'] = urljoin(website_baseurl, img['src'])
+    soup = format_text(text)
 
     # Write the modified HTML back to a file
     output_dir = os.path.join(cache_dir, website_name)

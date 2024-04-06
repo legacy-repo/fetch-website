@@ -3,14 +3,17 @@
 }
 
 #ccc {
+    visibility: hidden;
     display: none;
 }
 
 .external > img {
+    visibility: hidden;
     display: none;
 }
 
 #sidebar {
+    visibility: hidden;
     display: none;
 }
 
@@ -24,9 +27,11 @@
 }
 
 .cosmic, .logo_grch38, .subhead, footer {
+    visibility: hidden;
     display: none;
 }
 
 #section-genome-browser {
+    visibility: hidden;
     display: none !important;
 }

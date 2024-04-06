@@ -8,8 +8,7 @@ from urllib.parse import urljoin
 
 website_name = "sanger_cosmic"
 website_baseurl = "https://cancer.sanger.ac.uk"
-redirect_url = 'http://localhost:3000/sanger_cosmic'
-
+redirect_url = 'https://omics-data.3steps.cn/sanger_cosmic'
 
 def get_website_url(gene):
     return f'https://cancer.sanger.ac.uk/cosmic/gene/analysis?ln={gene}'
